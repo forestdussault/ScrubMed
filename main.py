@@ -186,7 +186,7 @@ def main():
                                             'master_pubmed_dict_{}.csv'.format(i))
         df.to_csv(master_dict_filepath, index=False)
 
-        # Get file stats on pickle
+        # Get file stats on output file
         info = os.stat(master_dict_filepath)
         logging.info('Filesize: {} kB'.format(info.st_size/1000))
 
