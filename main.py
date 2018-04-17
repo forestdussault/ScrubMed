@@ -118,6 +118,8 @@ def parse_xml_record(xml_record):
     try:
         abstract = xml_record.findAll('abstracttext')[0]
         abstract = [x for x in abstract][0]
+        if abstract == '':
+            abstract = None
     except (IndexError, AttributeError):
         abstract = None
 
