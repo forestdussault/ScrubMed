@@ -37,10 +37,9 @@ def retrieve_all_pmids(searchterm):
     """
     Uses esearch to retrieve a list of PMIDs matching your search critieria
     e.g. ' "0000/01/01"[PDAT] : "3000/12/31"[PDAT] antimicrobial ' will return every available PMID on PubMed
+    Note: esearch maxes out at 100,000 records, so you have to continue searching by incrementing `retstart` parameter
     """
     Entrez.email = 'forest.dussault@inspection.gc.ca'
-    # ESearch for every single pubmed record: "0000/01/01"[PDAT] : "3000/12/31"[PDAT]
-    # esearch maxes out at 100,000 records, so you have to continue searching by incrementing `retstart`
     id_list = []
     for x in range(16):
         try:
