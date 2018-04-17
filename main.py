@@ -109,6 +109,8 @@ def parse_xml_record(xml_record):
     try:
         year = xml_record.articledate.findAll('year')[0]
         year = [x for x in year][0]
+        if year == '':
+            year = xml_record.pubmedpubdate.year.text
     except (IndexError, AttributeError):
         year = None
 
