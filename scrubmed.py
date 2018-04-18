@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from Bio import Entrez
 from bs4 import BeautifulSoup
 
