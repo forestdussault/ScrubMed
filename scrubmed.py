@@ -9,43 +9,29 @@ import click
 import logging
 import pandas as pd
 
-EMAIL_ADDRESS = 'forest.dussault@inspection.gc.ca'
+DEV_EMAIL_ADDRESS = 'forest.dussault@inspection.gc.ca'
+TOOL_NAME = 'ScrubMed'
 
 
-def chunk_list(a, n):
-    """
-    Splits a provided list into n chunks
-    :param a: List
-    :param n: Number of chunks requested
-    :return: A list of lists (n chunks)
-    """
-    k, m = divmod(len(a), n)
-    try:
-        chunked_list = [a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n)]
-    except:
-        chunked_list = a
-    return chunked_list
-
-
-def get_num_records_from_query(query, email):
-    Entrez.email = email
+def get_num_records_from_query(query):
+    Entrez.email = DEV_EMAIL_ADDRESS
     handle = Entrez.esearch(db='pubmed', term=query, idtype='acc')
     record = Entrez.read(handle)
     num_records = int(record['Count'])
     return num_records
 
 
-def retrieve_all_pmids(query, output_directory, email):
+def retrieve_all_pmids(query):
     """
     Uses esearch to retrieve a list of PMIDs matching your search critieria
     e.g. ' "0000/01/01"[PDAT] : "3000/12/31"[PDAT] antimicrobial ' will return every available PMID on PubMed
     Note: esearch maxes out at 100,000 records, so you have to continue searching by incrementing `retstart` parameter
     """
-    Entrez.email = email
+    Entrez.email = DEV_EMAIL_ADDRESS
     id_list = []
 
     # Figure out range
-    num_records = get_num_records_from_query(query=query, email=email)
+    num_records = get_num_records_from_query(query=query)
     if num_records == 0:
         logging.info('No records detected for query "{}". Quitting.'.format(query))
         quit()
@@ -58,7 +44,7 @@ def retrieve_all_pmids(query, output_directory, email):
     for x in range(record_range):
         try:
             handle = Entrez.esearch(db='pubmed', retmax=100000, retstart=x, term=query,
-                                    idtype='acc', tool='ScrubMed')
+                                    idtype='acc', tool=TOOL_NAME)
             record = Entrez.read(handle)
             handle.close()
             id_list.extend(record['IdList'])
@@ -69,46 +55,25 @@ def retrieve_all_pmids(query, output_directory, email):
     return id_list
 
 
-def efetch_record(pmid, email):
-    """
-    Fetches an individual record by PMID
-    :param pmid: string PMID
-    :param email:
-    :return: record that can be parsed by bs4 to extract information like title, date, etc
-    """
-    Entrez.email = email
-    try:
-        handle = Entrez.efetch(db='pubmed', id=pmid, retmode='xml', tool='ScrubMed')
-    except:
-        handle = None
-    return handle
-
-
-def efetch_record_env(webenv, querykey, email):
+def efetch_record_env(webenv, querykey):
     """
     Takes a webenv and query_key gathered from epost. This allows fetching a large queryset instead of an individual
     record.
-    :param webenv:
-    :param querykey:
-    :param email:
-    :return: record(s) that can be parsed with bs4
     """
-    Entrez.email = email
-    handle = Entrez.efetch(db='pubmed', webenv=webenv, query_key=querykey, retmode='xml', tool='ScrubMed')
+    Entrez.email = DEV_EMAIL_ADDRESS
+    handle = Entrez.efetch(db='pubmed', webenv=webenv, query_key=querykey, retmode='xml', tool=TOOL_NAME)
     records = handle.read()
     handle.close()
     return records
 
 
-def epost_records(pmid_list, email):
+def epost_records(pmid_list):
     """
     Takes a list of PMIDs and returns the webenv and query_key for the search that can be passed to efetch to
     actually retrieve the records
-    :param pmid_list:
-    :param email:
     :return webenv, query_key: pass objects to efetch
     """
-    Entrez.email = email
+    Entrez.email = DEV_EMAIL_ADDRESS
     try:
         search_results = Entrez.read(Entrez.epost("pubmed", id=",".join(pmid_list)))
         webenv = search_results["WebEnv"]
@@ -121,9 +86,7 @@ def epost_records(pmid_list, email):
 
 def parse_xml_record(xml_record):
     """
-    Parses a PubMed XML formatted record and returns abstract, title, pub year, and PMID
-    :param xml_record:
-    :return: dictionary containing the abstract text, title, pub year, and PMID.
+    Parses a PubMed XML formatted record and returns dict with abstract, title, pub year, and PMID
     """
     try:
         pmid = xml_record.findAll('pmid')[0]
@@ -153,8 +116,20 @@ def parse_xml_record(xml_record):
     return {'pmid': pmid, 'abstract': abstract, 'title': title, 'year': year}
 
 
+def chunk_list(a, n):
+    """
+    Splits a provided list into n chunks
+    """
+    k, m = divmod(len(a), n)
+    try:
+        chunked_list = [a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n)]
+    except:
+        chunked_list = a
+    return chunked_list
+
+
 def download_pipeline(output_directory, query):
-    pubmed_ids = retrieve_all_pmids(query=query, output_directory=output_directory, email=EMAIL_ADDRESS)
+    pubmed_ids = retrieve_all_pmids(query=query)
     num_records = len(pubmed_ids)
 
     # Cut into n chunks
@@ -168,8 +143,8 @@ def download_pipeline(output_directory, query):
     # Iterate over chunked list
     for i, chunk in enumerate(pubmed_id_chunks):
         # efetch every record in the chunk
-        _webenv, _querykey = epost_records(pmid_list=chunk, email=EMAIL_ADDRESS)
-        data = efetch_record_env(webenv=_webenv, querykey=_querykey, email=EMAIL_ADDRESS)
+        _webenv, _querykey = epost_records(pmid_list=chunk)
+        data = efetch_record_env(webenv=_webenv, querykey=_querykey)
 
         # split the data into separate articles
         _xml_records = BeautifulSoup(data, 'lxml')
@@ -195,7 +170,7 @@ def download_pipeline(output_directory, query):
         df = pd.concat(df_list)
 
         # Drop master dictionary into csv
-        master_dict_filepath = os.path.join(output_directory, 'master_pubmed_dict_{}.csv'.format(i+1))
+        master_dict_filepath = os.path.join(output_directory, '{}_{:04}.csv'.format(TOOL_NAME, i+1))
         df.to_csv(master_dict_filepath, index=False)
 
         # Get file stats on output file
