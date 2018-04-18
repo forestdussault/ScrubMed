@@ -22,7 +22,7 @@ pip install ScrubMed
 Usage: scrubmed.py [OPTIONS]
 
 Options:
-  -o, --output_directory TEXT  Output directory to dump PubMed data
+  -o, --output_directory PATH  Output directory to dump PubMed data
                                [required]
   -q, --query TEXT             Your query to send to PubMed. Note that your
                                query must be in double quotes. e.g.
@@ -33,7 +33,7 @@ Options:
 
 #### Example usage
 This will retrieve all records from 2018 with the keywords `"antimicrobial resistance"`.
-All of the resulting output will be dumped into `~/scrubmed`.
+All of the resulting output will be dumped into the specified output folder.
 ```
-scrubmed.py -o ~/scrubmed -q ""2018/01/01"[PDAT] : "2018/12/31"[PDAT] antimicrobial resistance"
+scrubmed.py -o /home/user/scrubmed_output -q ""2018/01/01"[PDAT] : "2018/12/31"[PDAT] antimicrobial resistance"
 ```
