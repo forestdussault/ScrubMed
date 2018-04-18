@@ -206,6 +206,7 @@ def download_pipeline(output_directory, query):
 @click.command()
 @click.option('-o', '--output_directory',
               required=True,
+              type=click.Path(),
               help='Output directory to dump PubMed data')
 @click.option('-q', '--query',
               required=True,
